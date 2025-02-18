@@ -16,7 +16,7 @@ import os
 import textwrap
 from collections import defaultdict
 from typing import Any, Callable, Optional, Union
-
+import dataclasses
 import torch
 import torch.utils.data
 import transformers
@@ -334,17 +334,20 @@ class Qwen2VLGRPOTrainer(Trainer):
             if isinstance(reward_func, PreTrainedModel):
                 self.reward_funcs[i] = self.accelerator.prepare_model(reward_func, evaluation_mode=True)
         
-        self.gen_method = 
         if self.gen_method==1:
-            print("======================begin")
+            print("="*30)
             os.environ['CUDA_VISIBLE_DEVICES'] = f"{int(os.environ.get('LOCAL_RANK', 0))}"
-            self.vlm = sgl.Engine(
+            server_args = ServerArgs(
                 model_path=sgl_args.sgl_model_path,
                 chat_template=sgl_args.sgl_chat_template,
                 attention_backend=sgl_args.sgl_attention_backend,
                 sampling_backend=sgl_args.sgl_sampling_backend,
             )
-            print("**********************success")
+            args_dict = dataclasses.asdict(server_args)
+            self.vlm = sgl.Engine(
+                **args_dict
+            )
+            print("+"*30)
 
     def _set_signature_columns_if_needed(self):
         # If `self.args.remove_unused_columns` is True, non-signature columns are removed.
