@@ -55,6 +55,14 @@ if is_peft_available():
 if is_wandb_available():
     import wandb
 
+try:
+    import sglang as sgl
+    from sglang.srt.openai_api.adapter import v1_chat_generate_request
+    from sglang.srt.openai_api.protocol import ChatCompletionRequest
+    from sglang.srt.server_args import ServerArgs
+except:
+    print("need to install sglang")
+
 # What we call a reward function is a callable that takes a list of prompts and completions and returns a list of
 # rewards. When it's a string, it's a model ID, so it's loaded as a pretrained model.
 RewardFunc = Union[str, PreTrainedModel, Callable[[list, list], list[float]]]
@@ -159,6 +167,8 @@ class Qwen2VLGRPOTrainer(Trainer):
         max_pixels: Optional[int] = 12845056,
         min_pixels: Optional[int] = 3136,
         attn_implementation: str = "flash_attention_2",
+        gen_method=0,
+        sgl_args=None,
     ):
         # Args
         if args is None:
@@ -323,6 +333,18 @@ class Qwen2VLGRPOTrainer(Trainer):
         for i, reward_func in enumerate(self.reward_funcs):
             if isinstance(reward_func, PreTrainedModel):
                 self.reward_funcs[i] = self.accelerator.prepare_model(reward_func, evaluation_mode=True)
+        
+        self.gen_method = 
+        if self.gen_method==1:
+            print("======================begin")
+            os.environ['CUDA_VISIBLE_DEVICES'] = f"{int(os.environ.get('LOCAL_RANK', 0))}"
+            self.vlm = sgl.Engine(
+                model_path=sgl_args.sgl_model_path,
+                chat_template=sgl_args.sgl_chat_template,
+                attention_backend=sgl_args.sgl_attention_backend,
+                sampling_backend=sgl_args.sgl_sampling_backend,
+            )
+            print("**********************success")
 
     def _set_signature_columns_if_needed(self):
         # If `self.args.remove_unused_columns` is True, non-signature columns are removed.

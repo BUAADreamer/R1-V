@@ -25,6 +25,20 @@ from math_verify import parse, verify
 from open_r1.trainer import Qwen2VLGRPOTrainer, Qwen2VLGRPOVLLMTrainer
 from trl import GRPOConfig, GRPOTrainer, ModelConfig, ScriptArguments, TrlParser, get_peft_config
 
+@dataclass
+class SGLangScriptArguments:
+    sgl_model_path: str = field(
+        default = "/data/fengzc/LLM/checkpoints/Qwen2-VL-7B-Instruct",
+    )
+    sgl_chat_template: str = field(
+        default = "qwen2-vl"
+    )
+    sgl_attention_backend: str = field(
+        default = "triton"
+    )
+    sgl_sampling_backend: str = field(
+        default = "pytorch"
+    )
 
 @dataclass
 class GRPOScriptArguments(ScriptArguments):
@@ -47,6 +61,10 @@ class GRPOScriptArguments(ScriptArguments):
     min_pixels: Optional[int] = field(
         default=3136,
         metadata={"help": "Minimum number of pixels for the image"},
+    )
+    gen_method: Optional[int] = field(
+        default=0,
+        metadata={"help": "generation method: 0==>hf num_gen>1; 1==>sglang"},
     )
 
 
@@ -114,7 +132,7 @@ SYSTEM_PROMPT = (
 )
 
 
-def main(script_args, training_args, model_args):
+def main(script_args, training_args, model_args, sgl_args):
     # Get reward functions
     reward_funcs = [reward_funcs_registry[func] for func in script_args.reward_funcs]
 
@@ -186,6 +204,8 @@ def main(script_args, training_args, model_args):
         attn_implementation=model_args.attn_implementation,
         max_pixels=script_args.max_pixels,
         min_pixels=script_args.min_pixels,
+        sgl_args=sgl_args,
+        gen_method=script_args.gen_method,
     )
 
     # Train and push the model to the Hub
@@ -198,6 +218,6 @@ def main(script_args, training_args, model_args):
 
 
 if __name__ == "__main__":
-    parser = TrlParser((GRPOScriptArguments, GRPOConfig, ModelConfig))
-    script_args, training_args, model_args = parser.parse_args_and_config()
-    main(script_args, training_args, model_args)
+    parser = TrlParser((GRPOScriptArguments, GRPOConfig, ModelConfig, SGLangScriptArguments))
+    script_args, training_args, model_args, sgl_args = parser.parse_args_and_config()
+    main(script_args, training_args, model_args, sgl_args)
